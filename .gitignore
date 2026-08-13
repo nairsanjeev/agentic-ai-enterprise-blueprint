@@ -1,0 +1,14 @@
+# Spec-kit / agent local state (may contain credentials or machine-specific paths)
+.specify/memory/.constitution-template.json
+*.env
+.env.*
+
+# Terraform / Bicep local artifacts
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.bicepparam.local.json
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
