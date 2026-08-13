@@ -63,7 +63,7 @@ Foundry/APIM are deployed on top of it.
 **Why this priority**: Needed to validate Story 1's output, but not blocking for other teams to
 start planning on top of the network once it exists.
 
-**Independent Test**: Deploy Azure Bastion into the Management subnet; connect to a test VM in
+**Independent Test**: Deploy Azure Bastion into the `AzureBastionSubnet`; connect to a test VM in
 the Private Endpoints subnet via Bastion; resolve a private DNS name from within that VM.
 
 **Acceptance Scenarios**:
