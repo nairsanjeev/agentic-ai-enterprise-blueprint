@@ -71,7 +71,7 @@ infra/
 │       ├── main.bicep           # VNet + all subnets
 │       ├── nsg.bicep            # NSG definitions (apim, compute)
 │       ├── private-dns.bicep    # Private DNS zones + VNet links
-│       ├── bastion.bicep        # AzureBastionSubnet + Bastion host + public IP
+│       ├── bastion.bicep        # Bastion host + public IP (uses existing AzureBastionSubnet from main.bicep)
 │       └── outputs.bicep        # (or output blocks in main.bicep) — subnet IDs for downstream modules (Epic 2 Foundry/APIM)
 └── envs/
     └── poc/
