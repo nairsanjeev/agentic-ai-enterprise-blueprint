@@ -4,8 +4,8 @@
 
 ## Linked issue / epic
 
-Closes #
-
+<!-- If this PR closes an issue, uncomment and fill in the number: -->
+<!-- Closes #123 -->
 ## Spec reference
 
 <!-- Link to specs/<capability>/spec.md or plan.md this implements -->
