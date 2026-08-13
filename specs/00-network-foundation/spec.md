@@ -45,8 +45,8 @@ associations; verify Private DNS zones are linked to the VNet.
 **Acceptance Scenarios**:
 
 1. **Given** an empty resource group, **When** the network Bicep module is deployed, **Then** a
-   VNet with address space `10.0.0.0/16` and 7 subnets (APIM, Foundry-delegated, Compute,
-   Private Endpoints, CI/CD Agents, Management/Bastion) exists.
+   VNet with address space `10.0.0.0/16` and 6 subnets (APIM, Foundry-delegated, Compute,
+   Private Endpoints, CI/CD Agents, Bastion) exists.
 2. **Given** the VNet exists, **When** an NSG is inspected on the compute subnet, **Then** direct
    internet egress to AI services is denied except through the APIM subnet.
 3. **Given** the VNet exists, **When** Private DNS zones for Foundry/OpenAI/APIM/Key
