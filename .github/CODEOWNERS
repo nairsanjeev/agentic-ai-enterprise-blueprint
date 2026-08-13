@@ -1,0 +1,21 @@
+# CODEOWNERS — mirrors the blueprint's separation of duties (Ch. 17)
+# Replace the placeholder @handles below with actual GitHub usernames/teams.
+
+# Default owners for anything not matched below
+*                       @nairsanjeev
+
+# Infrastructure (network, Foundry, APIM, policy) — IT Platform Engineering
+/infra/                 @platform-eng-placeholder
+/specs/00-network-foundation/   @platform-eng-placeholder
+/specs/01-foundry-gateway/      @platform-eng-placeholder
+
+# Governance, CI/CD gates, tool registry — AI Center of Excellence
+/pipelines/             @ai-coe-placeholder
+/specs/03-minimal-governance/   @ai-coe-placeholder
+/specs/04-cicd-gates/           @ai-coe-placeholder
+
+# Agent code and developer-facing specs — Developers
+/specs/02-first-agent/  @dev-placeholder
+
+# Narrative chapters — anyone can propose, CoE/platform reviews
+/chapters/              @nairsanjeev
