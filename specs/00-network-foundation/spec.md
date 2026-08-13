@@ -105,6 +105,11 @@ quota page for the candidate region(s); confirm sufficient TPM for planned POC a
   Azure Front Door dependencies for APIM VNet-injected mode)? → Document required allow-rules
   from Microsoft's published service tags in `plan.md` before implementation.
 
+## Prerequisites
+
+- Azure subscription access: Owner or Contributor **and** User Access Administrator on the subscription.
+- Entra ID permissions: ability to create Entra ID security groups (as required for later RBAC setup).
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
