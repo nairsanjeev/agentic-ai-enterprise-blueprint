@@ -65,7 +65,7 @@ against a private endpoint DNS name; confirm it resolves to a `10.0.x.x` address
 
 ### Implementation for User Story 2
 
-- [ ] T017 [P] [US2] Write `infra/modules/network/bastion.bicep` — `AzureBastionSubnet` (10.0.6.0/26), Bastion public IP, Bastion host (Basic SKU per plan.md Research Q4)
+- [ ] T017 [P] [US2] Write `infra/modules/network/bastion.bicep` — Bastion public IP + Bastion host (Basic SKU per plan.md Research Q4), deployed into existing `AzureBastionSubnet` created by main.bicep
 - [ ] T018 [US2] Wire bastion.bicep into `infra/envs/poc/main.bicep` (depends on T013, T017)
 - [ ] T019 [US2] Deploy a throwaway test VM (no public IP) into `snet-privateendpoints` for validation only — document as a manual/temporary step in `infra/envs/poc/README.md`, not a persistent resource
 - [ ] T020 [US2] Validate: connect via Bastion, run `nslookup` for a placeholder private DNS record, confirm private IP resolution
