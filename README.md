@@ -112,6 +112,7 @@ Enterprise (Recommended)
 | [00](./chapters/00-overview.md) | Platform Overview & Architecture | Architecture deep-dive, topology decisions, IQ ecosystem, security philosophy |
 | [01](./chapters/01-foundry-byo-networking.md) | Create Microsoft Foundry with BYO Networking | Foundry resource with private VNet, delegated subnets, private endpoints |
 | [02](./chapters/02-ai-gateway.md) | Build the AI Gateway (APIM) | APIM as GenAI gateway, VNet injection, unified model API, MCP server hosting |
+| [02a](./chapters/02a-mcp-a2a-samples.md) | Publish MCP Tools and A2A Agents | Deploy a weather MCP tool, A2A agent sample, and CoE publication runbook |
 | [04](./chapters/04-api-center.md) | Create Azure API Center | Centralized registry for all MCP servers, agents, skills, and APIs |
 | [15](./chapters/15-observability.md) | Observability, Evaluation & Red Teaming | Log Analytics, App Insights, dashboards, evaluators, Agent 365 registry |
 | [16](./chapters/16-defender.md) | Implement Microsoft Defender for AI | Agent inventory, risk assessment, threat detection, Agent 365 integration |

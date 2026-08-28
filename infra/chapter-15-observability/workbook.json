@@ -1,0 +1,80 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Agent Platform Observability\n\nHealth, cost, latency, and gateway telemetry for the Internet of Agents platform. Agent/model/tool tiles read Application Insights `customEvents`; the gateway tile reads `ApiManagementGatewayLogs` in the Log Analytics workspace."
+      },
+      "name": "title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp > ago(24h)\n| where name == \"agent-invocation\"\n| extend agentName = tostring(customDimensions.[\"agent.name\"])\n| extend success = iif(customDimensions.[\"agent.error\"] == \"\", true, false)\n| summarize TotalCalls = count(), SuccessRate = round(100.0 * countif(success) / count(), 2) by agentName, bin(timestamp, 1h)\n| render timechart",
+        "size": 0,
+        "title": "Agent invocation success rate (24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "crossComponentResources": [
+          "__APPINSIGHTS_ID__"
+        ],
+        "visualization": "timechart"
+      },
+      "name": "agent-success-rate"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp > ago(7d)\n| where name == \"llm-completion\"\n| extend modelUsed = tostring(customDimensions.[\"model.name\"])\n| extend promptTokens = toint(customDimensions.[\"model.prompt_tokens\"])\n| extend completionTokens = toint(customDimensions.[\"model.completion_tokens\"])\n| extend estimatedCost = case(modelUsed == \"gpt-4o\", (promptTokens * 0.0025 + completionTokens * 0.01) / 1000, modelUsed == \"gpt-4o-mini\", (promptTokens * 0.00015 + completionTokens * 0.0006) / 1000, 0.0)\n| summarize TotalCost = sum(estimatedCost), TotalRequests = count(), AvgCostPerRequest = avg(estimatedCost) by modelUsed, bin(timestamp, 1d)\n| order by timestamp desc",
+        "size": 0,
+        "title": "Model Router cost tracking (7d)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "crossComponentResources": [
+          "__APPINSIGHTS_ID__"
+        ],
+        "visualization": "table"
+      },
+      "name": "model-cost"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp > ago(24h)\n| where name == \"tool-call\"\n| extend toolName = tostring(customDimensions.[\"tool.name\"])\n| extend durationMs = todouble(customDimensions.[\"tool.duration_ms\"])\n| summarize P50 = percentile(durationMs, 50), P95 = percentile(durationMs, 95), P99 = percentile(durationMs, 99), CallCount = count() by toolName\n| order by P95 desc",
+        "size": 0,
+        "title": "Tool call latency (24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "crossComponentResources": [
+          "__APPINSIGHTS_ID__"
+        ],
+        "visualization": "table"
+      },
+      "name": "tool-latency"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "ApiManagementGatewayLogs\n| where TimeGenerated > ago(24h)\n| summarize TotalRequests = count(), SuccessfulRequests = countif(ResponseCode >= 200 and ResponseCode < 300), ClientErrors = countif(ResponseCode >= 400 and ResponseCode < 500), ServerErrors = countif(ResponseCode >= 500), AvgLatencyMs = avg(TotalTime) by bin(TimeGenerated, 5m), ApiId\n| render timechart",
+        "size": 0,
+        "title": "APIM gateway throughput and errors (24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces",
+        "crossComponentResources": [
+          "__WORKSPACE_ID__"
+        ],
+        "visualization": "timechart"
+      },
+      "name": "apim-gateway"
+    }
+  ],
+  "fallbackResourceIds": [
+    "__APPINSIGHTS_ID__"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

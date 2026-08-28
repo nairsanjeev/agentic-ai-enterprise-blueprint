@@ -39,6 +39,21 @@ Microsoft Defender for AI extends your existing **Security Operations Center (SO
 - Microsoft Defender for Cloud enabled on the subscription
 - Security Administrator role
 
+### Reproducible Deployment and End-to-End Demo
+
+The repository includes an idempotent deployment script and a persistent Foundry portal demo agent:
+
+```powershell
+.\infra\chapter-16-defender\deploy.ps1 -Execute
+python -m pip install -r .\infra\chapter-16-defender\requirements.txt
+python .\infra\chapter-16-defender\create-portal-demo-agent.py --run-demo
+```
+
+The demo combines the existing Foundry IQ knowledge MCP connection, APIM weather MCP tool, Packing
+Advisor A2A agent, Chapter 15 OpenTelemetry export, Prompt Shields, and Defender prompt evidence. See
+[`infra/chapter-16-defender/README.md`](../infra/chapter-16-defender/README.md) for the portal flow and
+safe security demonstration steps.
+
 ---
 
 ## Part 1: Understanding Defender for AI

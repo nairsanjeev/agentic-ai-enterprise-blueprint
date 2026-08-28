@@ -142,6 +142,104 @@ After linking, all APIs and MCP servers from APIM are automatically visible in A
 
 ---
 
+## Part 2a: Tested deployment runbook (current CLI)
+
+> **Reproducible IaC:** this chapter now ships Bicep + deploy script at
+> [`infra/chapter-04-api-center/`](../infra/chapter-04-api-center/README.md) (API Center, managed
+> identity, live APIM link, governance metadata, and RBAC). The steps below are the equivalent CLI
+> walkthrough and the manual portal actions that can't be expressed in ARM.
+
+> The `az apic` extension has changed since the commands above were written. In the current extension
+> there is **no** `az apic service link` / `integration` / `portal` / `skill` / `mcp-server` subcommand.
+> APIs and MCP servers are pulled in with **`az apic import-from-apim`**, which requires a
+> **user-assigned managed identity** on the API Center with reader access to APIM. This is the exact,
+> verified sequence for this environment.
+
+```powershell
+$r    = 'rg-agentic-ai-blueprint-dev'
+$apic = 'apic-agent-blueprint-dev'
+$apim = 'apim-agent-blueprint-dev-a5jiq4re'
+
+# 1. Create the API Center (Standard plan; API Center is not in every region — eastus works)
+az extension add --name apic-extension
+az apic create -g $r -n $apic -l eastus
+
+# 2. Create a user-assigned identity and give it reader on APIM
+$uami   = az identity create -g $r -n id-apic-agent-blueprint -l eastus -o json | ConvertFrom-Json
+$apimId = az apim show -g $r -n $apim --query id -o tsv
+az role assignment create --assignee-object-id $uami.principalId --assignee-principal-type ServicePrincipal `
+  --role "API Management Service Reader Role" --scope $apimId
+
+# 3. Attach the identity to the API Center service (PATCH — no CLI flag for this yet)
+$svc  = az apic show -g $r -n $apic --query id -o tsv
+$body = "{""identity"":{""type"":""UserAssigned"",""userAssignedIdentities"":{""$($uami.id)"":{}}}}"
+$f=New-TemporaryFile; [IO.File]::WriteAllText($f.FullName,$body,(New-Object System.Text.UTF8Encoding($false)))
+az rest --method PATCH --url "https://management.azure.com$svc`?api-version=2024-06-01-preview" `
+  --headers 'Content-Type=application/json' --body "@$($f.FullName)"; Remove-Item $f.FullName
+
+# 4. Import every APIM API + MCP server into the catalog
+az apic import-from-apim -g $r --service-name $apic --apim-name $apim --apim-apis '*'
+
+# 5. Verify — the MCP server registers with kind 'mcp'
+az apic api list -g $r --service-name $apic --query "[].{name:title,kind:kind}" -o table
+```
+
+Expected catalog after import: **City Weather MCP Server** (`mcp`), **Packing Advisor A2A Backend**,
+**City Weather API**, **Echo API**, **A2A Well-Known Card** (plus the default `swagger-petstore` sample).
+
+### Custom metadata (governance)
+
+`az apic metadata create` requires the schema as **inline JSON** (the `--schema` flag does not expand
+`@file`), so run these from **bash** (or use the portal) to avoid PowerShell quoting issues:
+
+```bash
+az apic metadata create -g $r --service-name $apic --metadata-name owning-team \
+  --schema '{"type":"string","title":"Owning Team","enum":["travel","hr","finance","engineering","platform"]}' \
+  --assignments '[{entity:api,required:false,deprecated:false}]'
+az apic metadata create -g $r --service-name $apic --metadata-name data-classification \
+  --schema '{"type":"string","title":"Data Classification","enum":["public","internal","confidential","restricted"]}' \
+  --assignments '[{entity:api,required:false,deprecated:false}]'
+az apic metadata create -g $r --service-name $apic --metadata-name agent-protocol \
+  --schema '{"type":"string","title":"Agent Protocol","enum":["mcp","a2a","rest","graphql"]}' \
+  --assignments '[{entity:api,required:false,deprecated:false}]'
+```
+
+### Developer portal (managed portal)
+
+The API Center **managed portal** at
+`https://apic-agent-blueprint-dev.portal.eastus.azure-apicenter.ms` is enabled and wired for sign-in
+through the **Azure portal** (no full CLI yet). The Entra app registration for portal sign-in is
+automatable:
+
+```powershell
+$portalUrl = 'https://apic-agent-blueprint-dev.portal.eastus.azure-apicenter.ms'
+$appId = az ad app create --display-name "API Center Portal - apic-agent-blueprint-dev" --sign-in-audience AzureADMyOrg --query appId -o tsv
+$objId = az ad app show --id $appId --query id -o tsv
+$spa = "{""spa"":{""redirectUris"":[""$portalUrl""]}}"
+$f=New-TemporaryFile; [IO.File]::WriteAllText($f.FullName,$spa,(New-Object System.Text.UTF8Encoding($false)))
+az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications/$objId" --headers 'Content-Type=application/json' --body "@$($f.FullName)"; Remove-Item $f.FullName
+Write-Host "Portal sign-in app clientId: $appId"
+```
+
+Then finish in the Azure portal:
+
+1. Open API Center `apic-agent-blueprint-dev` → **API Center portal** (left nav).
+2. Under **Portal settings → Identity provider**, add **Microsoft Entra ID** and paste the **clientId**
+   from the app above (`7580eadf-491a-4591-83ee-208aedf636ae` in this deployment) and your tenant ID.
+3. Grant the portal app delegated permission to the API Center service (the portal prompts for admin
+   consent the first time).
+4. Assign each developer **Azure API Center Data Reader** on the API Center (done for the lab user):
+   ```powershell
+   $apicId = az apic show -g rg-agentic-ai-blueprint-dev -n apic-agent-blueprint-dev --query id -o tsv
+   az role assignment create --assignee <developer-object-id> --role "Azure API Center Data Reader" --scope $apicId
+   ```
+5. Browse the portal URL, sign in, and confirm the imported MCP server and APIs are discoverable.
+
+Validation steps are in
+[`infra/chapter-04-api-center/TEST.md`](../infra/chapter-04-api-center/TEST.md).
+
+---
+
 ## Part 3: Register MCP Servers
 
 ### Register the MCP Server from Chapter 01
@@ -237,6 +335,84 @@ For a richer experience, use the Azure portal:
    - **Endpoint**: The skill's API endpoint
    - **OpenAPI Definition**: Upload the skill's API specification
    - **Tags**: Categories for discovery
+
+---
+
+## Part 4a: Private Skill Catalog (tested runbook)
+
+This is the concrete, end-to-end setup that makes organization-scoped skills discoverable in the
+Foundry portal, based on
+[Create a private skill catalog in Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/private-skill-catalog).
+
+> **Important limitation — read first.** The Foundry **Skills API** (author / attach-to-toolbox /
+> download) **does not support private networking**. On a network-injected Standard account with
+> `publicNetworkAccess = Disabled` (Chapter 01a), you can still **discover** catalog skills in
+> **Build → Skills**, but you cannot *consume* them through the Skills API. To actually run a skill,
+> either **bundle it into a hosted agent** (direct injection of the `SKILL.md`, no Skills API at
+> runtime) or use a **separate public project** for the Skills API. The catalog itself (API Center) is
+> discovery-only and works regardless of the Foundry account's network posture.
+
+### Step 1: Author the skill
+
+A skill is a `SKILL.md` file following the [Agent Skills](https://agentskills.io) format — YAML front
+matter (`name`, `description`, both **unquoted**) plus a Markdown body that becomes the injected
+instructions. This repo ships a sample at
+[`skills/travel-packing-guidelines/SKILL.md`](../skills/travel-packing-guidelines/SKILL.md). Commit it
+to a Git repository so API Center can reference it by **Source URL**.
+
+### Step 2: Create the API Center
+
+```powershell
+az extension add --name apic-extension
+az apic create -g rg-agentic-ai-blueprint-dev -n apic-agent-blueprint-dev -l eastus
+```
+
+### Step 3: Register the skill as a catalog asset (portal)
+
+Skill-asset registration is a portal action:
+
+1. In the [Azure portal](https://portal.azure.com), open the API Center `apic-agent-blueprint-dev`.
+2. Under **Inventory** → **Assets**, select **+ Register an asset** → **Skill**.
+3. Provide the skill's **title** (`Travel Packing Guidelines`), **summary**, **description**,
+   **lifecycle stage**, and the **Source URL** of the Git repo folder holding `SKILL.md`.
+4. Under **Allowed tools**, select **+ Add tool** and choose the APIs/MCP servers from your API
+   inventory the skill may reach (this is the governance boundary — a skill can only use what you
+   approve here).
+5. Select **Create**. To keep the catalog in sync with source, integrate the Git repo
+   ([Synchronize API assets from a Git repo](https://learn.microsoft.com/en-us/azure/api-center/synchronize-assets-git)).
+
+### Step 4: Grant developers discovery access (RBAC)
+
+Developers need at least **Azure API Center Data Reader** on the API Center to see the catalog in
+Foundry:
+
+```powershell
+$apicId = az apic show -g rg-agentic-ai-blueprint-dev -n apic-agent-blueprint-dev --query id -o tsv
+az role assignment create --assignee <developer-object-id> --role "Azure API Center Data Reader" --scope $apicId
+```
+
+> Role assignments can take up to 24 hours to propagate.
+
+### Step 5: Discover the catalog in Foundry
+
+1. In the Foundry portal, open your project.
+2. Go to **Build** → **Skills**.
+3. Search/filter for your private catalog by the API Center name (`apic-agent-blueprint-dev`).
+4. Select the `Travel Packing Guidelines` skill and review its summary, source, compatibility, and
+   allowed tools.
+
+### Step 6: Use the skill
+
+Because the Skills API can't run on the private account, use **direct injection** in a hosted agent:
+
+1. Download the skill content (`SKILL.md`) from the catalog source.
+2. Place it under your hosted-agent project as `skills/travel-packing-guidelines/SKILL.md`.
+3. The agent loads every `skills/*/SKILL.md` as extra instructions at session start (no Skills API
+   needed at runtime). See
+   [Use skills in a hosted agent](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/skills#use-skills-in-a-hosted-agent).
+
+Validation steps are in
+[`infra/chapter-04-api-center/TEST.md`](../infra/chapter-04-api-center/TEST.md).
 
 ---
 

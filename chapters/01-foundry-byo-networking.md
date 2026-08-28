@@ -270,20 +270,160 @@ az cognitiveservices account deployment create \
 
 ---
 
-## Part 3: Configure BYO Network in Foundry Portal
+## Part 3: Enable Network Injection (Standard Agent Setup)
 
-Some network configurations are best done in the Foundry portal:
+> **This is the step that keeps agent *tool traffic* inside your VNet.** Making the Foundry account
+> private (Parts 1–2) secures the control/data plane, but **an agent's tool-call egress only enters
+> your VNet when the account has *network injection* enabled.** Without it, an agent that calls a
+> VNet-only endpoint (for example the internal APIM gateway from Chapter 02) fails with:
+>
+> > *The host name could not be resolved from the selected network path.*
 
-1. Navigate to [Microsoft Foundry Portal](https://ai.azure.com)
-2. Select your Foundry resource
-3. Go to **Settings** → **Networking**
-4. Select **Bring your own virtual network**
-5. Configure:
-   - **Virtual Network**: `vnet-agents-platform`
-   - **Delegated Subnet**: `snet-foundry` (10.0.3.0/24)
-   - **Private Endpoint Subnet**: `snet-privateendpoints` (10.0.4.0/24)
+### 3.1 Why a private account is not enough
 
-> **Important**: BYO VNet configuration must be set before creating agents. It cannot be changed after agents are deployed.
+There are two different "private" concepts, and both are required:
+
+| Concept | What it protects | Configured by |
+|---|---|---|
+| Private account (Parts 1–2) | The Foundry endpoint, portal, and model calls | `publicNetworkAccess = Disabled` + private endpoints |
+| **Network injection** | The **agent runtime's outbound tool calls** | `networkInjections` on the account + a **capability host** |
+
+Network injection places the agent's Micro VM / Data Proxy into your **delegated subnet**
+(`snet-foundry`). From there the agent uses your VNet's DNS, so it can resolve private DNS zones
+(including the internal APIM's `azure-api.net` zone) and reach VNet-only endpoints.
+
+### 3.2 Network injection requires Standard Agent Setup
+
+Foundry only offers network injection for a **Standard Agent Setup**, which means you bring your own:
+
+- **Azure Cosmos DB** — agent thread/message store
+- **Azure AI Search** — agent vector store
+- **Azure Storage** — agent file store
+
+These are wired to the project through a **capability host**. The capability host is the object that
+tells Foundry "store agent state in *these* resources and inject compute into *this* subnet". A
+project with **no capability host** cannot be network-injected.
+
+```
+┌─────────────────────────── Your VNet (agent-blueprint-dev-vnet) ───────────────────────────┐
+│                                                                                              │
+│   snet-foundry (delegated)          snet-privateendpoints            snet-apim               │
+│   ┌───────────────────────┐         ┌───────────────────┐           ┌──────────────────┐    │
+│   │  Injected agent        │  PE →   │  Cosmos / Search / │          │  Internal APIM    │    │
+│   │  runtime (Micro VM,    │────────▶│  Storage / Foundry │          │  192.168.2.4      │    │
+│   │  Data Proxy)           │  DNS →  │  private endpoints │          │  (azure-api.net)  │    │
+│   └───────────┬───────────┘         └───────────────────┘           └────────▲─────────┘    │
+│               │  tool call egress (now inside the VNet) ────────────────────────┘            │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+        ▲ capability host + networkInjections make this path exist
+```
+
+### 3.3 Critical ordering constraint
+
+> **Network injection cannot be added or changed after an agent has been created on a project.**
+
+If you already created an agent on a non-injected project, you must stand up a **new** Standard
+account/project and rebuild the agent there. Plan the network first.
+
+### 3.4 Deploy the Standard Agent Setup (recommended: Bicep)
+
+The repo ships a ready module that provisions the Standard dependencies, capability hosts, private
+endpoints/DNS, role assignments, and the `networkInjections` block — reusing this chapter's VNet:
+
+```powershell
+# Preview (no changes)
+.\infra\chapter-01a-standard-agent-network-injection\deploy.ps1
+
+# Deploy
+.\infra\chapter-01a-standard-agent-network-injection\deploy.ps1 -Execute
+```
+
+What the module configures on the account (the key property):
+
+```bicep
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  // ...
+  properties: {
+    allowProjectManagement: true
+    publicNetworkAccess: 'Disabled'
+    networkInjections: [
+      {
+        scenario: 'agent'                 // inject the agent runtime
+        subnetArmId: agentSubnet.id       // snet-foundry (delegated to Microsoft.App/environments)
+        useMicrosoftManagedNetwork: false // false = use YOUR VNet, not Microsoft's
+      }
+    ]
+  }
+}
+```
+
+And the project **capability host** that binds the three BYO connections:
+
+```bicep
+resource projectCapabilityHost 'Microsoft.CognitiveServices/accounts/projects/capabilityHosts@2025-06-01' = {
+  parent: foundryProject
+  name: '${foundryProjectName}-cap'
+  properties: {
+    capabilityHostKind: 'Agents'
+    storageConnections:      [ 'agent-storage' ]        // Azure Storage
+    threadStorageConnections:[ 'agent-thread-storage' ] // Cosmos DB
+    vectorStoreConnections:  [ 'agent-vector-store' ]   // Azure AI Search
+  }
+}
+```
+
+> **Two gotchas the module already handles (both cost a failed deploy if you hand-roll this):**
+>
+> 1. **Account capability host needs `customerSubnet`.** The *account*-level capability host must set
+>    `customerSubnet` to the **same** injected subnet as `networkInjections`, or you get
+>    `The customerSubnet property must match the subnet recorded on the Foundry account.`
+>    ```bicep
+>    resource accountCapabilityHost 'Microsoft.CognitiveServices/accounts/capabilityHosts@2025-06-01' = {
+>      parent: foundryAccount
+>      name: '${foundryAccountName}-cap'
+>      properties: {
+>        capabilityHostKind: 'Agents'
+>        customerSubnet: agentSubnet.id   // must equal the networkInjections subnet
+>      }
+>    }
+>    ```
+> 2. **Capability hosts are not cleanly idempotent.** Once created, re-running the full template can
+>    fail with `There is an existing Capability Host ... cannot create a new Capability Host`. If a
+>    deploy half-completes, create only the **missing** project capability host with a direct
+>    `az rest --method PUT ...capabilityHosts/<name>?api-version=2025-06-01` rather than re-running.
+> 3. **AI Search regional capacity.** If the VNet region is out of Search capacity
+>    (`InsufficientResourcesAvailable`), set `searchLocation` to an adjacent region — the VNet private
+>    endpoint still reaches it cross-region.
+
+### 3.5 Alternative: configure in the Foundry portal
+
+If you prefer the portal for a fresh (agent-free) project:
+
+1. Navigate to [Microsoft Foundry Portal](https://ai.azure.com) and select your Foundry resource.
+2. Go to **Settings** → **Networking** and keep **public network access disabled**; select the
+   existing Foundry private endpoint.
+3. Choose **Bring your own virtual network** and select:
+   - **Virtual Network**: `agent-blueprint-dev-vnet`
+   - **Delegated Subnet**: `snet-foundry` (`192.168.0.0/24`, delegated to `Microsoft.App/environments`)
+   - **Private Endpoint Subnet**: `snet-privateendpoints` (`192.168.1.0/24`)
+4. Under **Agents** setup, choose **Standard** and select your bring-your-own **Cosmos DB**,
+   **Azure AI Search**, and **Storage** resources (create them first, with private endpoints).
+5. Save. Foundry creates the capability host and provisions the agent's containers/indexes in your
+   resources.
+
+> **Important**: complete this **before** creating any agent. It cannot be changed afterward.
+
+### 3.6 Verify network injection is active
+
+```powershell
+$acctId = "/subscriptions/$((az account show --query id -o tsv))/resourceGroups/rg-agentic-ai-blueprint-dev/providers/Microsoft.CognitiveServices/accounts/<your-standard-account>"
+az rest --method GET --url "https://management.azure.com$acctId?api-version=2025-06-01" --query "properties.networkInjections" -o json
+az rest --method GET --url "https://management.azure.com$acctId/projects/<your-standard-project>/capabilityHosts?api-version=2025-06-01" --query "value[].{name:name,state:properties.provisioningState}" -o table
+```
+
+✅ Expect a `networkInjections` entry for `snet-foundry` and a project capability host in state
+`Succeeded`. Full validation (and the MCP/A2A tool-connection setup) is in
+[`infra/chapter-01a-standard-agent-network-injection/TEST.md`](../infra/chapter-01a-standard-agent-network-injection/TEST.md).
 
 ---
 
@@ -325,6 +465,9 @@ If you need to peer with other VNets:
 | Delegated subnet (/24) for Foundry agents | ✅ |
 | Model deployed (gpt-4o) | ✅ |
 | BYO VNet configured in Foundry portal | ✅ |
+| **Standard Agent Setup** (BYO Cosmos DB + AI Search + Storage) | ✅ |
+| **Network injection** enabled (agent tool egress inside the VNet) | ✅ |
+| Capability host created (account + project) | ✅ |
 
 ---
 

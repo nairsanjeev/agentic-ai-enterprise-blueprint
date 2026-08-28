@@ -8,6 +8,11 @@
 *.tfstate
 *.tfstate.*
 *.bicepparam.local.json
+*.log
+
+# Python generated artifacts
+**/__pycache__/
+*.py[cod]
 
 # OS/editor cruft
 .DS_Store
