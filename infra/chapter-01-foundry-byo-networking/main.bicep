@@ -23,6 +23,18 @@ param foundrySubnetPrefix string = '192.168.0.0/24'
 @description('Subnet used only by private endpoints for Foundry and its supporting resources.')
 param privateEndpointSubnetPrefix string = '192.168.1.0/24'
 
+@description('Name of an existing VNet to deploy into (bring-your-own network). Leave empty to create a new VNet from the address prefixes above.')
+param existingVnetName string = ''
+
+@description('Resource group of the existing VNet when it is not in this deployment resource group. Leave empty to use this resource group.')
+param existingVnetResourceGroupName string = ''
+
+@description('Name of the delegated Foundry agent subnet in the new or existing VNet.')
+param foundrySubnetName string = 'snet-foundry'
+
+@description('Name of the private endpoint subnet in the new or existing VNet.')
+param privateEndpointSubnetName string = 'snet-privateendpoints'
+
 @description('Deploy the gpt-4o model from the chapter. Set false if the region has no quota or the model version is unavailable.')
 param deployModel bool = true
 
@@ -62,10 +74,17 @@ var commonTags = {
   managedBy: 'Bicep'
 }
 
+// When existingVnetName is provided the module reuses the customer's network and
+// subnets; otherwise it creates a new VNet from the address prefixes above.
+var createNetwork = empty(existingVnetName)
+var networkResourceGroupName = !empty(existingVnetResourceGroupName) ? existingVnetResourceGroupName : resourceGroup().name
+var vnetName = createNetwork ? '${namePrefix}-vnet' : existingVnetName
+
 // Two subnets are intentionally separated: delegated Foundry compute cannot share
 // a subnet with private endpoints. A /24 leaves upgrade and scaling headroom.
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
-  name: '${namePrefix}-vnet'
+// Created only when no existing VNet is supplied.
+resource newVirtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = if (createNetwork) {
+  name: vnetName
   location: location
   tags: commonTags
   properties: {
@@ -76,7 +95,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
     }
     subnets: [
       {
-        name: 'snet-foundry'
+        name: foundrySubnetName
         properties: {
           addressPrefix: foundrySubnetPrefix
           delegations: [
@@ -90,7 +109,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         }
       }
       {
-        name: 'snet-privateendpoints'
+        name: privateEndpointSubnetName
         properties: {
           addressPrefix: privateEndpointSubnetPrefix
           privateEndpointNetworkPolicies: 'Disabled'
@@ -100,14 +119,20 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   }
 }
 
+// Unified reference to the new or customer-provided VNet and its subnets.
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
+  name: vnetName
+  scope: resourceGroup(networkResourceGroupName)
+}
+
 resource foundrySubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
   parent: virtualNetwork
-  name: 'snet-foundry'
+  name: foundrySubnetName
 }
 
 resource privateEndpointSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
   parent: virtualNetwork
-  name: 'snet-privateendpoints'
+  name: privateEndpointSubnetName
 }
 
 // Foundry currently uses three private DNS suffixes across its AI Services,
@@ -135,6 +160,9 @@ resource foundryDnsLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
       id: virtualNetwork.id
     }
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }]
 
 resource blobDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
@@ -154,6 +182,9 @@ resource blobDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024
       id: virtualNetwork.id
     }
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }
 
 resource keyVaultDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
@@ -173,6 +204,9 @@ resource keyVaultDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
       id: virtualNetwork.id
     }
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }
 
 // This is the Microsoft Foundry account (an AIServices Cognitive Services account).
@@ -291,6 +325,9 @@ resource foundryPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
       }
     ]
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }
 
 resource foundryDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
@@ -326,6 +363,9 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
       }
     ]
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }
 
 resource storageDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
@@ -363,6 +403,9 @@ resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
       }
     ]
   }
+  dependsOn: [
+    newVirtualNetwork
+  ]
 }
 
 resource keyVaultDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
@@ -399,6 +442,9 @@ output foundryProjectResourceId string = foundryProject.id
 output foundryEndpoint string = foundryAccount.properties.endpoint
 output storageAccountName string = storageAccount.name
 output keyVaultName string = keyVault.name
+output vnetName string = vnetName
+output vnetResourceGroupName string = networkResourceGroupName
+output createdNetwork bool = createNetwork
 output virtualNetworkName string = virtualNetwork.name
 output foundrySubnetId string = foundrySubnet.id
 output privateEndpointSubnetId string = privateEndpointSubnet.id

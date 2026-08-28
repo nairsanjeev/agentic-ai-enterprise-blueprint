@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    # These defaults target the subscription and tenant requested for this demo.
-    [string] $SubscriptionName = 'ME-MngEnvMCAP152025-snair-1',
-    [string] $Tenant = 'MngEnvMCAP152025.onmicrosoft.com',
+    # Leave empty to use the current 'az' context. Provide to target and verify a specific subscription/tenant.
+    [string] $SubscriptionName = '',
+    [string] $Tenant = '',
 
     # A dedicated resource group keeps Chapter 01 isolated and easy to remove later.
     [string] $ResourceGroupName = 'rg-agentic-ai-blueprint-dev',
@@ -10,6 +10,13 @@ param(
     [string] $WorkloadName = 'agent-blueprint',
     [ValidateSet('dev', 'test', 'prod')]
     [string] $Environment = 'dev',
+
+    # Bring-your-own network. Leave ExistingVnetName empty to create a new VNet.
+    # When supplied, the named VNet and subnets are reused instead of created.
+    [string] $ExistingVnetName = '',
+    [string] $ExistingVnetResourceGroupName = '',
+    [string] $FoundrySubnetName = 'snet-foundry',
+    [string] $PrivateEndpointSubnetName = 'snet-privateendpoints',
 
     # Model deployment consumes quota. Use -DeployModel:$false if quota is unavailable.
     [bool] $DeployModel = $true,
@@ -70,31 +77,38 @@ function Invoke-AzureCli {
 & $az account show --only-show-errors --output none 2>$null
 if ($LASTEXITCODE -ne 0) {
     if (-not $Login) {
-        throw "Azure CLI is not signed in. Run 'az login --tenant $Tenant --use-device-code', then rerun this script."
+        $tenantHint = if ([string]::IsNullOrWhiteSpace($Tenant)) { '' } else { " --tenant $Tenant" }
+        throw "Azure CLI is not signed in. Run 'az login$tenantHint --use-device-code', then rerun this script."
     }
 
-    Invoke-AzureCli -Arguments @('login', '--tenant', $Tenant, '--use-device-code', '--output', 'none')
+    $loginArgs = @('login', '--use-device-code', '--output', 'none')
+    if (-not [string]::IsNullOrWhiteSpace($Tenant)) {
+        $loginArgs += @('--tenant', $Tenant)
+    }
+    Invoke-AzureCli -Arguments $loginArgs
 }
 
-# Select by subscription display name, then prove subscription and tenant before any write.
-Invoke-AzureCli -Arguments @('account', 'set', '--subscription', $SubscriptionName)
+# Select the requested subscription when provided; otherwise use the current az context.
+if (-not [string]::IsNullOrWhiteSpace($SubscriptionName)) {
+    Invoke-AzureCli -Arguments @('account', 'set', '--subscription', $SubscriptionName)
+}
 $account = (& $az account show --output json | ConvertFrom-Json)
 if ($LASTEXITCODE -ne 0) {
-    throw 'Unable to read the selected Azure account.'
+    throw 'Unable to read the selected Azure account. Sign in with -Login or run az login first.'
 }
 
-# Verify the signed-in user belongs to the requested tenant domain. This uses only
-# built-in commands and avoids the interactive 'account' preview extension prompt.
+# Optional safety checks: enforced only when a subscription or tenant is explicitly provided,
+# so a wrong cached context cannot silently receive the deployment.
 $signedInUser = $account.user.name
-if ($account.name -ne $SubscriptionName) {
+if (-not [string]::IsNullOrWhiteSpace($SubscriptionName) -and $account.name -ne $SubscriptionName) {
     throw "Safety check failed. Selected subscription is '$($account.name)', expected '$SubscriptionName'."
 }
-if ([string]::IsNullOrWhiteSpace($signedInUser) -or -not $signedInUser.ToLowerInvariant().EndsWith('@' + $Tenant.ToLowerInvariant())) {
+if (-not [string]::IsNullOrWhiteSpace($Tenant) -and ([string]::IsNullOrWhiteSpace($signedInUser) -or -not $signedInUser.ToLowerInvariant().EndsWith('@' + $Tenant.ToLowerInvariant()))) {
     throw "Safety check failed. Signed-in user '$signedInUser' is not in tenant '$Tenant'."
 }
 
 Write-Host "Target subscription: $($account.name) ($($account.id))"
-Write-Host "Target tenant:       $Tenant ($($account.tenantId))"
+Write-Host "Target tenant:       $($account.tenantId)"
 Write-Host "Signed-in user:      $signedInUser"
 Write-Host "Resource group:      $ResourceGroupName"
 Write-Host "Azure region:        $Location"
@@ -172,8 +186,19 @@ $deploymentArguments = @(
     "environment=$Environment",
     'deployModel=false',
     "foundryUserPrincipalId=$FoundryUserObjectId",
-    'foundryUserPrincipalType=User'
+    'foundryUserPrincipalType=User',
+    "foundrySubnetName=$FoundrySubnetName",
+    "privateEndpointSubnetName=$PrivateEndpointSubnetName"
 )
+
+# Reuse a customer-provided VNet when supplied; otherwise the template creates one.
+if (-not [string]::IsNullOrWhiteSpace($ExistingVnetName)) {
+    $deploymentArguments += "existingVnetName=$ExistingVnetName"
+    Write-Host "Existing VNet:       $ExistingVnetName (subnets: $FoundrySubnetName, $PrivateEndpointSubnetName)"
+}
+if (-not [string]::IsNullOrWhiteSpace($ExistingVnetResourceGroupName)) {
+    $deploymentArguments += "existingVnetResourceGroupName=$ExistingVnetResourceGroupName"
+}
 
 # Validation catches policy, schema, and permission issues without deploying template resources.
 Write-Host 'Validating the Chapter 01 deployment...'

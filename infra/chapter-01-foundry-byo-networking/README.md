@@ -26,11 +26,15 @@ Foundry Agent Service network injection must be selected when the account/agent 
 
 | Setting | Value |
 |---|---|
-| Subscription | `ME-MngEnvMCAP152025-snair-1` |
-| Tenant | `MngEnvMCAP152025.onmicrosoft.com` |
+| Subscription | Current `az` context (override with `-SubscriptionName`) |
+| Tenant | Current `az` context (override with `-Tenant`) |
 | Resource group | `rg-agentic-ai-blueprint-dev` |
 | Region | `eastus2` |
 | Environment | `dev` |
+
+The script uses whatever subscription and tenant `az` is currently signed in to. Pass
+`-SubscriptionName` and/or `-Tenant` to target a specific one; when provided, the script verifies the
+active context matches before deploying. No subscription or tenant identifiers are stored in this repo.
 
 Resource names that must be globally unique receive a deterministic suffix derived from the subscription and resource group.
 
@@ -39,8 +43,8 @@ Resource names that must be globally unique receive a deterministic suffix deriv
 Run these commands from the repository root in PowerShell:
 
 ```powershell
-# Sign in only to the requested tenant. Device-code login avoids storing credentials in files.
-az login --tenant MngEnvMCAP152025.onmicrosoft.com --use-device-code
+# Sign in. Device-code login avoids storing credentials in files. Add --tenant <tenant> to pin a tenant.
+az login --use-device-code
 
 # Compile Bicep locally. Success produces no errors or warnings.
 az bicep build --file .\infra\chapter-01-foundry-byo-networking\main.bicep
@@ -60,6 +64,29 @@ If `gpt-4o` quota or version `2024-11-20` is unavailable in the selected region,
 ```
 
 Changing `-Location` is supported, but first confirm that the region supports Foundry Agent Service private networking and the requested model. The VNet and Foundry account must use the same region.
+
+## Bring your own network
+
+By default the template creates a new VNet with a delegated `snet-foundry` subnet and a
+`snet-privateendpoints` subnet. To deploy into a customer-provided VNet instead, pass its name and
+subnet names. The VNet is then referenced, not created:
+
+```powershell
+.\infra\chapter-01-foundry-byo-networking\deploy.ps1 `
+  -ExistingVnetName 'my-platform-vnet' `
+  -ExistingVnetResourceGroupName 'rg-network-hub' `
+  -FoundrySubnetName 'snet-foundry' `
+  -PrivateEndpointSubnetName 'snet-privateendpoints' `
+  -Execute
+```
+
+- `-ExistingVnetResourceGroupName` is optional; omit it when the VNet is in the deployment resource group.
+- Private DNS zones are still created and linked to the provided VNet so private endpoints resolve.
+- The existing subnets must be configured beforehand: the Foundry subnet delegated to
+  `Microsoft.App/environments`, and the private endpoint subnet with private endpoint network
+  policies disabled.
+- Corresponding Bicep parameters are `existingVnetName`, `existingVnetResourceGroupName`,
+  `foundrySubnetName`, and `privateEndpointSubnetName`.
 
 ## Cost and access considerations
 
