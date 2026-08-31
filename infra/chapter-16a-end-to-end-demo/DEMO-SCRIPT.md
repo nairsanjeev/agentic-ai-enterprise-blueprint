@@ -40,7 +40,7 @@ Run from the peered demo VM because Foundry, AI Search, and APIM use private net
 
 ```powershell
 az login
-az account set --subscription 'ME-MngEnvMCAP152025-snair-1'
+az account set --subscription '<subscription-name-or-id>'
 az account show --query '{subscription:name,tenant:tenantId}' -o table
 ```
 

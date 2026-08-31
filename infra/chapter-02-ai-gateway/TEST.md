@@ -46,7 +46,7 @@ az network vnet subnet show -g rg-agentic-ai-blueprint-dev --vnet-name agent-blu
 ```powershell
 $apimId = az apim show -g rg-agentic-ai-blueprint-dev -n apim-agent-blueprint-dev-a5jiq4re --query "identity.principalId" -o tsv
 az role assignment list --assignee $apimId `
-  --scope "/subscriptions/fb9d6508-5199-40b9-af4f-38befd007c74/resourceGroups/rg-agentic-ai-blueprint-dev/providers/Microsoft.CognitiveServices/accounts/agent-blueprint-dev-foundry-a5jiq4re" `
+  --scope "$(az cognitiveservices account show -g rg-agentic-ai-blueprint-dev -n agent-blueprint-dev-foundry-a5jiq4re --query id -o tsv)" `
   --query "[].roleDefinitionName" -o table
 ```
 ✅ Expect: `Cognitive Services OpenAI User`.
@@ -95,7 +95,7 @@ These are portal steps (APIM API import/MCP export are not available via CLI).
 ```powershell
 # Use the built-in all-access subscription (or create a product subscription in the portal)
 az rest --method post `
-  --url "https://management.azure.com/subscriptions/fb9d6508-5199-40b9-af4f-38befd007c74/resourceGroups/rg-agentic-ai-blueprint-dev/providers/Microsoft.ApiManagement/service/apim-agent-blueprint-dev-a5jiq4re/subscriptions/master/listSecrets?api-version=2024-05-01" `
+  --url "https://management.azure.com$(az apim show -g rg-agentic-ai-blueprint-dev -n apim-agent-blueprint-dev-a5jiq4re --query id -o tsv)/subscriptions/master/listSecrets?api-version=2024-05-01" `
   --query primaryKey -o tsv
 ```
 Copy the key (referred to below as `<APIM_KEY>`).

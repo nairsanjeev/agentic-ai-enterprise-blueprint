@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    # These defaults target the subscription and tenant used throughout the blueprint.
-    [string] $SubscriptionName = 'ME-MngEnvMCAP152025-snair-1',
-    [string] $Tenant = 'MngEnvMCAP152025.onmicrosoft.com',
+    # Override these placeholders with the customer subscription and tenant.
+    [string] $SubscriptionName = '<subscription-name>',
+    [string] $Tenant = '<tenant-domain>',
 
     [string] $ResourceGroupName = 'rg-agentic-ai-blueprint-dev',
     [string] $Location = 'eastus2',

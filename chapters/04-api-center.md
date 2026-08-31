@@ -225,7 +225,7 @@ Then finish in the Azure portal:
 
 1. Open API Center `apic-agent-blueprint-dev` → **API Center portal** (left nav).
 2. Under **Portal settings → Identity provider**, add **Microsoft Entra ID** and paste the **clientId**
-   from the app above (`7580eadf-491a-4591-83ee-208aedf636ae` in this deployment) and your tenant ID.
+  from the app above (`<portal-app-client-id>`) and your tenant ID.
 3. Grant the portal app delegated permission to the API Center service (the portal prompts for admin
    consent the first time).
 4. Assign each developer **Azure API Center Data Reader** on the API Center (done for the lab user):

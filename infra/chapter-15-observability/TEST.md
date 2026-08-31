@@ -1,6 +1,6 @@
 # Chapter 15 — Test & Validation
 
-Environment: subscription `ME-MngEnvMCAP152025-snair-1`, RG `rg-agentic-ai-blueprint-dev`.
+Environment: subscription `<subscription-name>`, RG `rg-agentic-ai-blueprint-dev`.
 
 ## 1. Log Analytics workspace exists
 

@@ -77,7 +77,7 @@ flowchart TB
     end
 
     %% runtime tool calls
-    agent -->|"🎫 Entra token aud=api://db2a9076..."| apim
+    agent -->|"🎫 Entra token aud=api://<audience-app-client-id>"| apim
     apim --> mcp --> rest --> wttr
     apim --> a2a
     agent -.resolves via.-> dns
@@ -115,7 +115,7 @@ sequenceDiagram
     participant T as MCP / A2A backend
 
     Note over A: Standard account has networkInjections -> snet-foundry
-    A->>E: Client-credentials token for aud api://db2a9076... (agentic identity)
+    A->>E: Client-credentials token for aud api://<audience-app-client-id> (agentic identity)
     E-->>A: Access token (roles: Mcp.Invoke)
     A->>D: Resolve apim-...azure-api.net
     D-->>A: 192.168.2.4 (private)
@@ -135,7 +135,7 @@ sequenceDiagram
 **Why each control exists**
 - **Network injection** puts the agent runtime in `snet-foundry` so it uses VNet DNS and can reach the
   internal APIM (fixes *"host name could not be resolved from the selected network path"*).
-- **Agentic identity + audience** `api://db2a9076-cbe6-4fbc-9204-12972c561a1f` (app
+- **Agentic identity + audience** `api://<audience-app-client-id>` (app
   `agent-blueprint-apim-agent-tools`) — the connection audience must be this Entra URI, never the APIM
   URL (fixes the *400 "failed to fetch agentic identity access token"*).
 - **`Mcp.Invoke` app role** on the agent identity lets Entra mint the client‑credentials token and lets
@@ -196,7 +196,7 @@ flowchart TB
         aApi["APIs: REST + A2A backend"]
     end
 
-    portal["Developer portal<br/>apic-agent-blueprint-dev.portal.eastus.azure-apicenter.ms<br/>Entra sign-in app 7580eadf..."]
+    portal["Developer portal<br/>apic-agent-blueprint-dev.portal.eastus.azure-apicenter.ms<br/>Entra sign-in app &lt;portal-app-client-id&gt;"]
     foundrySkills["Foundry Build > Skills<br/>(private skill catalog)"]
 
     apimBox -. sync .-> uami
@@ -227,14 +227,14 @@ flowchart TB
 | State | Cosmos DB | `agent-blueprint-dev-cosmos-vlpnxwtn` | threads/messages, private |
 | State | AI Search | `agent-blueprint-dev-search-vlpnxwtn` | vectors, `eastus`, private |
 | State | Storage | `ststdfbconcwrg7ntw` | agent files, private, Entra-only |
-| Identity | Audience app | `agent-blueprint-apim-agent-tools` | `api://db2a9076-...`, role `Mcp.Invoke` |
+| Identity | Audience app | `agent-blueprint-apim-agent-tools` | `api://<audience-app-client-id>`, role `Mcp.Invoke` |
 | Gateway (02) | APIM | `apim-agent-blueprint-dev-a5jiq4re` | Internal VNet mode, Developer SKU |
 | Gateway (02) | App Insights | `agent-blueprint-dev-gateway-appi` | APIM telemetry |
 | Tools (02a) | Weather MCP | `/mcp/weather/mcp` | agentic-identity |
 | Tools (02a) | A2A backend | `/a2a/packing-advisor-backend` | + host-root `/.well-known/agent-card.json` |
 | Catalog (04) | API Center | `apic-agent-blueprint-dev` | live APIM link + import |
 | Catalog (04) | Sync identity | `id-apic-agent-blueprint` | API Management Service Reader |
-| Catalog (04) | Portal app | clientId `7580eadf-...` | SPA redirect to portal URL |
+| Catalog (04) | Portal app | clientId `<portal-app-client-id>` | SPA redirect to portal URL |
 
 ---
 
@@ -255,7 +255,7 @@ flowchart TB
 
 ## 8. Trust & data-flow summary
 
-1. **Agent → tools:** agentic identity token (aud `api://db2a9076...`, role `Mcp.Invoke`) → internal
+1. **Agent → tools:** agentic identity token (aud `api://<audience-app-client-id>`, role `Mcp.Invoke`) → internal
    APIM (resolved to `192.168.2.4` via `azure-api.net`) → MCP/A2A backends. All in-VNet.
 2. **Agent → model:** private endpoint to the Standard Foundry account → gpt-4o.
 3. **Agent → state:** threads to Cosmos, files to Storage, vectors to AI Search — each over a private

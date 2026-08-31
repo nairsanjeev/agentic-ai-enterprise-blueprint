@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $SubscriptionName = 'ME-MngEnvMCAP152025-snair-1',
+    [string] $SubscriptionName = '<subscription-name>',
     [string] $ResourceGroupName = 'rg-agentic-ai-blueprint-dev',
     [string] $ApimName = 'apim-agent-blueprint-dev-a5jiq4re',
     [string] $AppInsightsName = 'agent-blueprint-dev-gateway-appi',

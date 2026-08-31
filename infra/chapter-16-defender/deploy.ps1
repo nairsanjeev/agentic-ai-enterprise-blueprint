@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string] $SubscriptionName = 'ME-MngEnvMCAP152025-snair-1',
-    [string] $Tenant = 'MngEnvMCAP152025.onmicrosoft.com',
+    [string] $SubscriptionName = '<subscription-name>',
+    [string] $Tenant = '<tenant-domain>',
     [string] $ResourceGroupName = 'rg-agentic-ai-blueprint-dev',
     [string] $FoundryAccountName = 'agent-blueprint-dev-foundry-std-vlpnxwtn',
     [string] $WorkspaceName = 'agent-blueprint-dev-law',

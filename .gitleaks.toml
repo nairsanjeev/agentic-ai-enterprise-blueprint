@@ -1,0 +1,10 @@
+title = "Governed Agentic Framework secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Azure built-in API Management Service Reader role definition ID"
+paths = ['''infra/chapter-04-api-center/main\.bicep''']
+regexTarget = "match"
+regexes = ["apimServiceReaderRoleId\\s*=\\s*'71522526-b88f-4d52-b57f-d31fc3546d0d'"]

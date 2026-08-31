@@ -98,7 +98,7 @@ az apic api list -g rg-agentic-ai-blueprint-dev --service-name apic-agent-bluepr
 ```powershell
 $svc = az apic show -g rg-agentic-ai-blueprint-dev -n apic-agent-blueprint-dev --query id -o tsv
 az rest --method GET --url "https://management.azure.com$svc`?api-version=2024-06-01-preview" --query "identity.type" -o tsv
-az role assignment list --assignee 29597cd6-b836-4024-b1cf-bad09db9280d --query "[?contains(roleDefinitionName,'API Management')].roleDefinitionName" -o table
+az role assignment list --assignee '<api-center-identity-object-id>' --query "[?contains(roleDefinitionName,'API Management')].roleDefinitionName" -o table
 ```
 ✅ Expect: `UserAssigned`, and `API Management Service Reader Role`.
 

@@ -11,7 +11,7 @@ internal MCP/A2A tool:
 2. `The host name could not be resolved from the selected network path` — **no network injection** (this chapter fixes it).
 
 **Environment**
-- Subscription: `ME-MngEnvMCAP152025-snair-1`
+- Subscription: `<subscription-name>`
 - Resource group: `rg-agentic-ai-blueprint-dev`
 - Region: `eastus2`
 - Reused network: `agent-blueprint-dev-vnet` → `snet-foundry` (delegated), `snet-privateendpoints`

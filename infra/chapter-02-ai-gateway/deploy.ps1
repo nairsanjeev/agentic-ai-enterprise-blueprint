@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    # These defaults target the subscription and tenant used throughout this demo.
-    [string] $SubscriptionName = 'ME-MngEnvMCAP152025-snair-1',
-    [string] $Tenant = 'MngEnvMCAP152025.onmicrosoft.com',
+    # Override these placeholders with the customer subscription and tenant.
+    [string] $SubscriptionName = '<subscription-name>',
+    [string] $Tenant = '<tenant-domain>',
 
     # Chapter 02 deploys into the same resource group and reuses Chapter 01's VNet.
     [string] $ResourceGroupName = 'rg-agentic-ai-blueprint-dev',
