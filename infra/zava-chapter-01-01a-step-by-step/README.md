@@ -2,6 +2,12 @@
 
 This folder is a Zava-specific, brownfield deployment sequence. Each stage is intentionally separate so the Azure change set can be reviewed, deployed, and validated before proceeding.
 
+## Interactive notebook
+
+Open `ZAVA-CHAPTER-01-01A-DEPLOYMENT.dib` with the VS Code **Polyglot Notebooks** extension (`ms-dotnettools.dotnet-interactive-vscode`) for a clickable PowerShell notebook experience. Run cells from top to bottom. Azure-changing cells are blocked by explicit approval variables that default to `$false`.
+
+The notebook displays the Bicep source, compiles it, validates it, runs what-if, and deploys each stage separately. `MANUAL-DEPLOYMENT-GUIDE.md` remains the complete written runbook.
+
 ## Supplied network and corrected address plan
 
 Customer input:
