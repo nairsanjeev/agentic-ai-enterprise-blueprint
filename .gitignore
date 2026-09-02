@@ -10,6 +10,10 @@
 *.bicepparam.local.json
 *.log
 
+# Customer-local Zava deployment values and generated non-secret inventories
+**/zava.customer.json
+**/zava-*-deployment-outputs.json
+
 # Python generated artifacts
 **/__pycache__/
 *.py[cod]

@@ -9,7 +9,10 @@ param(
     [string] $SearchLocation = 'eastus',
     [string] $VnetName = 'azr-133-eastus',
     [string] $AgentSubnetName = 'snet-zava-foundry-agent',
+    [string] $AgentSubnetPrefix = '10.75.139.160/27',
     [string] $PrivateEndpointSubnetName = 'snet-zava-privateendpoints',
+    [string] $PrivateEndpointSubnetPrefix = '10.75.139.144/28',
+    [bool] $CreatePrivateEndpointDnsZoneGroups = $true,
     [string] $WorkloadName = 'zava',
     [ValidateSet('dev', 'test', 'prod')]
     [string] $Environment = 'dev',
@@ -26,6 +29,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $folder = $PSScriptRoot
+
+if ($Step -eq 'All' -and $Execute) {
+    throw 'All-at-once execution is blocked. Deploy one reviewed stage at a time.'
+}
 
 function Invoke-Az {
     param([Parameter(Mandatory)][string[]] $Arguments)
@@ -140,7 +147,9 @@ if ($runAll -or $Step -eq 'Subnets') {
         -Parameters @(
             "vnetName=$VnetName",
             "agentSubnetName=$AgentSubnetName",
-            "privateEndpointSubnetName=$PrivateEndpointSubnetName"
+            "agentSubnetPrefix=$AgentSubnetPrefix",
+            "privateEndpointSubnetName=$PrivateEndpointSubnetName",
+            "privateEndpointSubnetPrefix=$PrivateEndpointSubnetPrefix"
         )
 }
 
@@ -163,6 +172,7 @@ $workloadParameters = @(
     "vnetName=$VnetName",
     "privateEndpointSubnetName=$PrivateEndpointSubnetName",
     "privateDnsResourceGroupName=$PrivateDnsResourceGroupName",
+    "createPrivateEndpointDnsZoneGroups=$($CreatePrivateEndpointDnsZoneGroups.ToString().ToLowerInvariant())",
     "foundryUserPrincipalId=$FoundryUserObjectId"
 )
 

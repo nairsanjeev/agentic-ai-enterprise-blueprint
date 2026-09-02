@@ -2,13 +2,19 @@
 
 This folder is a Zava-specific, brownfield deployment sequence. Each stage is intentionally separate so the Azure change set can be reviewed, deployed, and validated before proceeding.
 
-## Interactive PowerShell cell workbook
+## Recommended customer-side VS Code workflow
 
-Open `ZAVA-CHAPTER-01-01A-CELLS.ps1` with the supported Microsoft **PowerShell** extension (`ms-vscode.PowerShell`). The script is divided by `# %%` markers into 38 numbered notebook-like cells.
+For deployment without GitHub Copilot, use **Terminal → Run Task** in VS Code. The repository includes native tasks for previewing and deploying every stage. Copy `zava.customer.example.json` to the Git-ignored `zava.customer.json`, populate the customer values, and follow `CUSTOMER-VSCODE-DEPLOYMENT.md`.
 
-To execute a cell, select the code between two `# %%` markers and press **F8** (**PowerShell: Run Selection**). Always use the same PowerShell Extension terminal so variables persist across cells. Do not run the complete file with F5 or **Run PowerShell File**.
+The task workflow requires only Azure CLI, PowerShell 7, and the free Microsoft Bicep/PowerShell/Azure Account extensions. It does not require Copilot, agent mode, Python, Jupyter, or Polyglot Notebooks.
 
-Run cells from top to bottom. Azure-changing cells are protected by explicit approval variables that default to `$false`. The workbook displays Bicep source, compiles it, validates it, runs what-if, and deploys each stage separately. `MANUAL-DEPLOYMENT-GUIDE.md` remains the complete written runbook.
+## Interactive Python Jupyter notebook
+
+Open `ZAVA-CHAPTER-01-01A-DEPLOYMENT.ipynb` in VS Code using the Microsoft **Jupyter** and **Python** extensions. Select a Python kernel and run cells from top to bottom. Azure-changing cells are protected by explicit approval variables that default to `False`.
+
+The notebook uses Python and Azure SDKs for state, authentication, resource inspection, validation, output export, and guarded cleanup. Azure CLI is invoked through safe argument arrays for Bicep compilation, ARM validation, what-if, and deployment. It never uses `shell=True`.
+
+The previous `ZAVA-CHAPTER-01-01A-CELLS.ps1` remains available as a non-notebook fallback. `MANUAL-DEPLOYMENT-GUIDE.md` remains the complete written runbook.
 
 ## Supplied network and corrected address plan
 

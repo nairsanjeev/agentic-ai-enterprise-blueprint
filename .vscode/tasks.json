@@ -1,0 +1,97 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Zava: 01 - Preview Subnets",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Subnets", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 01 - Deploy Subnets",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Subnets", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 02 - Preview Direct DNS Links",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "DnsLinks", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 02 - Deploy Direct DNS Links",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "DnsLinks", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 03 - Preview Chapter 01",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Chapter01", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 03 - Deploy Chapter 01",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Chapter01", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 04 - Preview Chapter 01a Core",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Chapter01aCore", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 04 - Deploy Chapter 01a Core",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Chapter01aCore", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 05 - Preview Capability Hosts",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "CapabilityHosts", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 05 - Deploy Capability Hosts ONCE",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "CapabilityHosts", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 06 - Review Model",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Model", "-Action", "Preview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Zava: 06 - Deploy Model",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/Invoke-ZavaCustomerDeployment.ps1", "-Configuration", "${input:zavaConfig}", "-Stage", "Model", "-Action", "Deploy", "-ConfirmDeployment"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "zavaConfig",
+      "type": "promptString",
+      "description": "Path to populated Zava customer JSON configuration",
+      "default": "${workspaceFolder}/infra/zava-chapter-01-01a-step-by-step/zava.customer.json"
+    }
+  ]
+}

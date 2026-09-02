@@ -1,0 +1,22 @@
+{
+  "tenantId": "<Zava-tenant-id>",
+  "subscription": "<Zava-subscription-id-or-name>",
+  "workloadResourceGroupName": "<Zava-workload-resource-group>",
+  "networkResourceGroupName": "<Zava-network-resource-group>",
+  "privateDnsResourceGroupName": "<Zava-private-dns-resource-group>",
+  "location": "eastus",
+  "searchLocation": "eastus",
+  "vnetName": "azr-133-eastus",
+  "agentSubnetName": "snet-zava-foundry-agent",
+  "agentSubnetPrefix": "10.75.139.160/27",
+  "privateEndpointSubnetName": "snet-zava-privateendpoints",
+  "privateEndpointSubnetPrefix": "10.75.139.144/28",
+  "createPrivateEndpointDnsZoneGroups": false,
+  "workloadName": "zava",
+  "environment": "dev",
+  "foundryUserObjectId": "",
+  "modelDeploymentName": "gpt-4o",
+  "modelName": "gpt-4o",
+  "modelVersion": "2024-11-20",
+  "modelCapacity": 30
+}
