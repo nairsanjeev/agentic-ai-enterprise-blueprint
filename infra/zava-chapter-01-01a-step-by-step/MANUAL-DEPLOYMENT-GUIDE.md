@@ -6,6 +6,72 @@ No orchestration script is required. All commands are intended to be run manuall
 
 ---
 
+## Before you begin: open PowerShell in VS Code
+
+Use one PowerShell terminal for the entire deployment. The values entered in Section 2 are stored only in that terminal and will be lost if it is closed.
+
+### A. Open the repository
+
+1. Start Visual Studio Code.
+2. Select **File > Open Folder**.
+3. Select the `Governed Agentic Framework` folder.
+4. If VS Code asks whether you trust the folder, review the folder location and select **Yes, I trust the authors** only if it is the expected repository.
+
+### B. Open a PowerShell terminal
+
+1. Select **Terminal > New Terminal** from the VS Code menu.
+2. A terminal panel opens at the bottom of VS Code.
+3. Check that the prompt starts with `PS`. If it does not, select the arrow next to the **+** in the terminal panel, select **PowerShell**, and close the other terminal.
+4. Check that the prompt ends with the repository folder, similar to:
+
+   ```text
+   PS C:\Governed Agentic Framework>
+   ```
+
+5. If the terminal is in a different folder, run:
+
+   ```powershell
+   Set-Location 'C:\Governed Agentic Framework'
+   ```
+
+   If the repository was saved somewhere else, use that folder path instead.
+
+### C. Check the required command-line tools
+
+Copy the following block, paste it into the terminal, and press **Enter**:
+
+```powershell
+$PSVersionTable.PSVersion
+az version
+```
+
+- PowerShell should print a version. PowerShell 7 or later is recommended.
+- Azure CLI should print version information. If `az` is not recognized, install Azure CLI, restart VS Code, and repeat this check.
+- Do not continue until both commands work.
+
+### D. How to run the commands in this guide
+
+1. Copy one complete PowerShell block at a time, including its first and last lines.
+2. Click inside the PowerShell terminal, paste the block, and press **Enter**.
+3. A backtick (`` ` ``) at the end of a line means the command continues on the next line. Do not add spaces after a backtick.
+4. Wait until the `PS ...>` prompt returns before running the next block.
+5. Read the output and complete each validation step before moving to the next numbered section.
+6. Keep the same terminal open throughout the deployment. If it is closed or VS Code is restarted, return to Section 2 and set the PowerShell values again.
+
+> **Important:** Do not use the editor's **Run Code** button for these commands. Paste them into the PowerShell terminal. Preview or validation commands are safe checks; run resource-creating commands only after reviewing their values and output.
+
+### E. If PowerShell reports that script execution is disabled
+
+This guide mostly runs commands directly. If a trusted repository script is blocked by the local execution policy, run the following once in the same terminal and then retry it:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+This changes the policy only for the current PowerShell process. Closing the terminal removes the change. Do not change the machine-wide execution policy.
+
+---
+
 ## 1. Confirm the network information first
 
 Zava supplied:

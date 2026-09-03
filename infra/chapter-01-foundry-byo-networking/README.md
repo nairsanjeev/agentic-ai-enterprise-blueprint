@@ -1,15 +1,91 @@
 # Chapter 01 deployment
 
 This folder turns `chapters/01-foundry-byo-networking.md` into a repeatable Azure deployment.
-The Bicep template creates:
+It provisions a private Microsoft Foundry account and project on a bring-your-own network, with
+private endpoints and VNet-linked DNS so all data-plane access stays inside the VNet.
 
-- A new VNet with a dedicated `/24` Foundry subnet delegated to `Microsoft.App/environments`.
-- A separate `/24` subnet for private endpoints.
-- A Microsoft Foundry account with public access and local API-key authentication disabled.
-- An actual Foundry project. The chapter's Step 6 only creates a model deployment despite its heading.
-- A `gpt-4o` Global Standard deployment at capacity 30, when enabled and quota is available. This is created by a separate idempotent CLI step, not in-template, because deploying a Cognitive Services account and its model deployment in one template races on the account's provisioning state.
-- Private Storage and Key Vault resources from the chapter.
-- Private endpoints and VNet-linked DNS zones for Foundry, Azure OpenAI, Foundry projects, Blob Storage, and Key Vault.
+## What is deployed
+
+### End-state architecture
+
+```mermaid
+flowchart TB
+    operator[Developer or deployment pipeline]
+    entra[Microsoft Entra ID]
+
+    subgraph network[Platform VNet - 192.168.0.0/16]
+        agentSubnet[snet-foundry - 192.168.0.0/24<br/>delegated to Microsoft.App/environments]
+        peSubnet[snet-privateendpoints - 192.168.1.0/24]
+        dns[Private DNS zones linked to the VNet]
+    end
+
+    subgraph foundry[Microsoft Foundry]
+        account[Foundry account<br/>public access and local auth disabled]
+        project[Foundry project<br/>system-assigned identity]
+        model[gpt-4o Global Standard deployment<br/>optional]
+    end
+
+    subgraph supporting[Supporting resources]
+        storage[Blob Storage<br/>Entra-only, no shared keys]
+        vault[Key Vault<br/>RBAC, purge protection]
+    end
+
+    subgraph privateLink[Private connectivity]
+        foundryPe[Foundry private endpoint]
+        storagePe[Blob private endpoint]
+        vaultPe[Key Vault private endpoint]
+    end
+
+    operator -->|Optional Foundry User RBAC| project
+    operator -->|ARM control plane, public| account
+    account --> project
+    account --> model
+    project -->|Entra auth| entra
+
+    peSubnet --- foundryPe --> account
+    peSubnet --- storagePe --> storage
+    peSubnet --- vaultPe --> vault
+    foundryPe --- dns
+    storagePe --- dns
+    vaultPe --- dns
+    dns --- agentSubnet
+
+    account -. network injection selected in portal .-> agentSubnet
+```
+
+### Resources created by the Bicep template
+
+| Resource | Bicep behavior | Purpose |
+|---|---|---|
+| Virtual network | Created only when no existing VNet is supplied; `192.168.0.0/16` by default | Network trust boundary for agent compute and private endpoints |
+| `snet-foundry` subnet | `/24`, delegated to `Microsoft.App/environments` | Dedicated subnet for Foundry Agent Service network injection |
+| `snet-privateendpoints` subnet | `/24`, private endpoint network policies disabled | Hosts the private endpoints for Foundry, Storage, and Key Vault |
+| Foundry account | Private `AIServices` account; `publicNetworkAccess` disabled, `disableLocalAuth` true, default-deny network ACLs, system-assigned identity | The Microsoft Foundry account that hosts the project and model |
+| Foundry project | Child project with its own system-assigned managed identity | The project used to build agents |
+| `gpt-4o` deployment | Global Standard, capacity 30; created by an idempotent CLI step in `deploy.ps1`, not in-template | Chat model for the project (optional, quota permitting) |
+| Storage account | Standard LRS; blob public access, shared-key access disabled; HTTPS and TLS 1.2 required | Private Blob Storage from the chapter |
+| Key Vault | RBAC authorization, soft delete, 90-day retention, purge protection, public access disabled | Private secret and key store from the chapter |
+| Foundry private endpoint | Targets the `account` group in `snet-privateendpoints` | Private access to the Foundry account and project endpoints |
+| Storage private endpoint | Targets the `blob` group | Private access to Blob Storage |
+| Key Vault private endpoint | Targets the `vault` group | Private access to Key Vault |
+| Foundry private DNS zones | `privatelink.cognitiveservices.azure.com`, `privatelink.openai.azure.com`, `privatelink.services.ai.azure.com`, linked to the VNet | Resolve the three Foundry endpoint suffixes to the private endpoint |
+| Blob private DNS zone | `privatelink.blob.<storage suffix>`, linked to the VNet | Resolves Blob Storage to its private endpoint |
+| Key Vault private DNS zone | `privatelink.vaultcore.azure.net`, linked to the VNet | Resolves Key Vault to its private endpoint |
+| Foundry User role assignment | Created only when a principal ID is supplied (`deploy.ps1` defaults it to the signed-in user) | Grants data-plane access to build agents in the project |
+
+### Security posture
+
+- Foundry, Storage, and Key Vault deny public data-plane access; access is through private endpoints only.
+- Local API-key and shared-key authentication are disabled; access uses Microsoft Entra ID.
+- The delegated `snet-foundry` subnet is separated from the private endpoint subnet.
+- Storage requires HTTPS and TLS 1.2; Key Vault uses RBAC with purge protection.
+
+### Not created by this chapter
+
+- Azure AI Search and Cosmos DB (customer-owned agent state) and the capability host are introduced in Chapter 01a.
+- Agents and tool connections are post-deployment data-plane resources.
+- No firewall, NAT gateway, route table, or subnet NSG is deployed here.
+
 
 ## Important scope note
 

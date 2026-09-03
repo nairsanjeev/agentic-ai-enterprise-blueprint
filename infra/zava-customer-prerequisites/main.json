@@ -1,0 +1,187 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.46.1.21595",
+      "templateHash": "16461490024393683791"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for the customer-owned VNet. Foundry must use the same region."
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "zava-dev-vnet",
+      "metadata": {
+        "description": "Name of the simulated customer-owned VNet."
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.240.0.0/16",
+      "metadata": {
+        "description": "Address space for the simulated customer-owned VNet."
+      }
+    },
+    "agentSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-foundry",
+      "metadata": {
+        "description": "Name of the subnet delegated for Foundry Agent Service network injection."
+      }
+    },
+    "agentSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.240.0.0/24",
+      "metadata": {
+        "description": "Address prefix for the delegated Foundry agent subnet."
+      }
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "defaultValue": "snet-privateendpoints",
+      "metadata": {
+        "description": "Name of the subnet dedicated to private endpoints."
+      }
+    },
+    "privateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.240.1.0/24",
+      "metadata": {
+        "description": "Address prefix for the private endpoint subnet."
+      }
+    }
+  },
+  "variables": {
+    "commonTags": {
+      "workload": "zava-agentic-blueprint",
+      "environment": "dev",
+      "purpose": "customer-network-simulation",
+      "ownership": "zava-platform-team",
+      "managedBy": "Bicep"
+    },
+    "privateDnsZoneNames": [
+      "privatelink.cognitiveservices.azure.com",
+      "privatelink.openai.azure.com",
+      "privatelink.services.ai.azure.com",
+      "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+      "privatelink.vaultcore.azure.net",
+      "privatelink.documents.azure.com",
+      "privatelink.search.windows.net"
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('agentSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('agentSubnetPrefix')]",
+              "delegations": [
+                {
+                  "name": "foundry-agent-service-delegation",
+                  "properties": {
+                    "serviceName": "Microsoft.App/environments"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "[parameters('privateEndpointSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+              "privateEndpointNetworkPolicies": "Disabled"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "copy": {
+        "name": "privateDnsZones",
+        "count": "[length(variables('privateDnsZoneNames'))]"
+      },
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2024-06-01",
+      "name": "[variables('privateDnsZoneNames')[copyIndex()]]",
+      "location": "global",
+      "tags": "[variables('commonTags')]"
+    },
+    {
+      "copy": {
+        "name": "privateDnsVnetLinks",
+        "count": "[length(variables('privateDnsZoneNames'))]"
+      },
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2024-06-01",
+      "name": "[format('{0}/{1}', variables('privateDnsZoneNames')[copyIndex()], format('link-{0}', parameters('vnetName')))]",
+      "location": "global",
+      "tags": "[variables('commonTags')]",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[copyIndex()])]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "vnetName": {
+      "type": "string",
+      "value": "[parameters('vnetName')]"
+    },
+    "vnetResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+    },
+    "agentSubnetName": {
+      "type": "string",
+      "value": "[parameters('agentSubnetName')]"
+    },
+    "agentSubnetResourceId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[0].id]"
+    },
+    "privateEndpointSubnetName": {
+      "type": "string",
+      "value": "[parameters('privateEndpointSubnetName')]"
+    },
+    "privateEndpointSubnetResourceId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[1].id]"
+    },
+    "privateDnsZoneResourceIds": {
+      "type": "array",
+      "copy": {
+        "count": "[length(variables('privateDnsZoneNames'))]",
+        "input": {
+          "name": "[variables('privateDnsZoneNames')[copyIndex()]]",
+          "id": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneNames')[copyIndex()])]"
+        }
+      }
+    }
+  }
+}
